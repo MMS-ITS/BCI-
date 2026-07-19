@@ -73,8 +73,11 @@ CAT_DESC = {
     'Associate Member': 'Associate member',
 }
 
+import html as _html
 def brief(text, limit=130):
-    text = re.sub(r'\s+', ' ', text or '').strip()
+    text = _html.unescape(text or '')
+    text = re.sub(r'<[^>]+>', ' ', text)  # strip any stray tags
+    text = re.sub(r'\s+', ' ', text).strip()
     if not text:
         return ''
     # cut at sentence end near limit
@@ -86,14 +89,27 @@ def brief(text, limit=130):
         cut = cut.rsplit(' ', 1)[0]
     return cut.rstrip(' .,;:-') + '…'
 
+def mostly_english(text):
+    """Heuristic: reject strings dominated by non-ASCII/non-Latin characters."""
+    if not text:
+        return False
+    letters = [c for c in text if c.isalpha()]
+    if not letters:
+        return False
+    non_ascii = sum(1 for c in letters if ord(c) > 0x24F)  # beyond Latin Extended-A/B
+    if non_ascii / len(letters) > 0.12:
+        return False
+    ascii_ratio = sum(1 for c in text if ord(c) < 128) / len(text)
+    return ascii_ratio > 0.80
+
+JUNK_TITLE = re.compile(r'(?i)(just a moment|access denied|are you a robot|error|not found|403|404|attention required|cloudflare|domain (for sale|is for sale)|under construction|coming soon|index of)')
+
 def product_for(item, sc):
     meta = sc.get('meta') if sc else ''
     title = sc.get('title') if sc else ''
     cat_desc = CAT_DESC.get(item['category'], 'Cotton/textile member')
-    if meta and len(meta) > 20:
+    if meta and len(meta) > 25 and mostly_english(meta) and not JUNK_TITLE.search(meta):
         return brief(meta)
-    if title and len(title) > 15 and not re.search(r'(?i)(just a moment|access denied|error|not found|403|404|attention required|cloudflare)', title):
-        return brief(f"{cat_desc} — {title}", 140)
     return cat_desc
 
 def norm_display_website(w):
