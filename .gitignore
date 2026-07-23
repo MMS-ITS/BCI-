@@ -1,6 +1,0 @@
-__pycache__/
-*.pyc
-scrape.log
-data_extracted.json
-scrape_results.json
-final_table.json
